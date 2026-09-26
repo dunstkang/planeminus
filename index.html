@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>湊數飛行</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#42A5F5">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky-top:#42A5F5; --sky-bot:#E3F2FD;
+  --sea-top:#4FC3F7; --sea-bot:#01579B;
+  --land-top:#81C784; --land-bot:#2E7D32;
+  --ink:#24324A; --ink-dim:#6a7f9a;
+  --accent:#5E35B1; --accent2:#00695C;
+  --green:#2E7D32; --red:#C62828; --gold:#FFD54F;
+  --card:#ffffffE0; --border:#c9d8ea;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:'Noto Sans TC',sans-serif; color:var(--ink);
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:16px calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  padding-top:calc(16px + env(safe-area-inset-top));
+  background:linear-gradient(160deg,#E3F2FD,#F3E5F5);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){ --ink:#0f1720; }
+}
+
+/* splash */
+#screen-splash{
+  position:fixed; inset:0; z-index:999; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:32px; text-align:center;
+  background:linear-gradient(180deg,var(--sky-top),var(--sky-bot));
+}
+.splash-symbol{ font-size:5rem; margin-bottom:6px; animation:drop .6s cubic-bezier(.22,1,.36,1) both; filter:drop-shadow(0 6px 10px rgba(0,0,0,.15)); }
+.splash-title{ font-family:'Bebas Neue',cursive; font-size:3rem; letter-spacing:6px; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.25); animation:drop .6s .1s cubic-bezier(.22,1,.36,1) both; }
+.splash-sub{ font-size:.85rem; color:#eef6ff; margin:6px 0 44px; animation:drop .6s .2s cubic-bezier(.22,1,.36,1) both; }
+@keyframes drop{ from{transform:translateY(-24px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+.splash-btn{
+  padding:16px 52px; font-family:'Bebas Neue',cursive; font-size:1.5rem; letter-spacing:4px;
+  border:2px solid #fff; border-radius:6px; background:rgba(255,255,255,.15); color:#fff;
+  cursor:pointer; animation:drop .6s .3s cubic-bezier(.22,1,.36,1) both;
+}
+.splash-btn:hover{ background:#fff; color:var(--sky-top); }
+
+/* update bar */
+#update-bar{
+  display:none; position:fixed; left:0; right:0; z-index:9999;
+  bottom:env(safe-area-inset-bottom,0px);
+  background:#0a3a1a; border-top:2px solid #00e676; padding:12px 20px;
+  align-items:center; justify-content:space-between; gap:12px; font-size:.9rem; color:#fff;
+}
+#update-bar button{ padding:8px 20px; background:#00e676; color:#0a2a14; border:none; border-radius:4px; font-weight:900; cursor:pointer; }
+
+/* screens */
+.screen{ display:none; width:100%; max-width:480px; }
+.screen.active{ display:flex; flex-direction:column; align-items:center; }
+.top-bar{ width:100%; display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+#version-tag{ font-size:.65rem; color:var(--ink-dim); opacity:.6; }
+.page-title{ font-family:'Bebas Neue',cursive; font-size:1.7rem; letter-spacing:3px; margin-bottom:16px; width:100%; text-align:center; }
+.page-title span{ color:var(--accent); }
+
+.card{ width:100%; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px; margin-bottom:14px; backdrop-filter:blur(4px); }
+.card-title{ font-size:.72rem; letter-spacing:2px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:12px; font-weight:700; }
+.base-input{ width:100%; padding:14px; font-size:1.4rem; font-weight:900; text-align:center; border:2px solid var(--border); border-radius:10px; color:var(--accent); font-family:'Bebas Neue',cursive; letter-spacing:2px; }
+.diff-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.diff-btn{ padding:14px 8px; border-radius:8px; border:2px solid var(--border); background:#fff; color:var(--ink-dim); cursor:pointer; text-align:center; font-family:'Noto Sans TC',sans-serif; }
+.diff-btn .d-level{ font-family:'Bebas Neue',cursive; font-size:1.1rem; color:var(--accent); display:block; }
+.diff-btn .d-sub{ font-size:.72rem; color:var(--ink-dim); display:block; margin-top:2px; }
+.diff-btn.selected{ border-color:var(--accent); background:rgba(94,53,177,.08); color:var(--ink); }
+.diff-btn.selected .d-sub{ color:var(--accent); }
+.start-btn{ width:100%; padding:18px; background:var(--accent); color:#fff; border:none; border-radius:10px; font-family:'Bebas Neue',cursive; font-size:1.5rem; letter-spacing:3px; cursor:pointer; }
+.start-btn:active{ transform:translateY(1px); }
+
+/* game controls */
+.ctrl-bar{ width:100%; display:flex; gap:8px; margin-bottom:8px; }
+.ctrl-btn{ flex:none; padding:9px 14px; background:#fffc; border:1px solid var(--border); border-radius:10px; font-size:.85rem; font-weight:700; color:var(--ink); cursor:pointer; }
+.ctrl-bar .spacer{ flex:1; }
+.lives-tag,.score-tag{ font-size:.95rem; font-weight:700; align-self:center; }
+.score-tag{ color:var(--accent2); }
+
+/* runway */
+#runway{ position:relative; width:100%; height:min(34vw,190px); min-height:140px; border-radius:16px; overflow:hidden; border:2px solid #90A4AE; margin-bottom:14px; }
+#runway .sky{ position:absolute; inset:0; background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-bot) 100%); }
+#runway .sea{ position:absolute; left:0; right:0; bottom:0; background:linear-gradient(180deg,var(--sea-top),var(--sea-bot)); }
+#runway .land{ position:absolute; bottom:0; background:linear-gradient(180deg,var(--land-top),var(--land-bot)); }
+#runway .land.start{ left:0; }
+#runway .land.end{ right:0; }
+#runway svg{ position:absolute; inset:0; width:100%; height:100%; }
+#plane{ position:absolute; width:70px; height:47px; transform-origin:center center; will-change:transform; }
+#finish-pin{
+  position:absolute; width:34px; height:34px; border-radius:50%; background:#E53935; color:#fff;
+  display:flex; align-items:center; justify-content:center; font-weight:900; font-size:.85rem;
+  border:3px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+
+/* question area */
+.q-row{ width:100%; display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+.target-num{ font-family:'Bebas Neue',cursive; font-size:3.4rem; color:var(--accent); line-height:1; }
+.q-info{ flex:1; }
+.status-text{ font-size:.85rem; color:var(--ink-dim); line-height:1.4; }
+.grid-wrap{ width:100%; display:grid; gap:10px; }
+.num-btn{
+  aspect-ratio:1/1; border-radius:12px; border:2px solid transparent; color:#fff; font-weight:900;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+.num-btn.correct{ border-color:var(--green); }
+.num-btn.wrong{ border-color:var(--red); }
+
+/* end overlay */
+#end-overlay{
+  display:none; position:fixed; inset:0; z-index:500; background:rgba(15,20,30,.9);
+  align-items:center; justify-content:center; text-align:center; padding:24px; opacity:0; transition:opacity .5s ease;
+}
+#end-overlay.show{ display:flex; opacity:1; }
+.end-title{ font-family:'Bebas Neue',cursive; font-size:2.2rem; letter-spacing:2px; margin-bottom:10px; }
+.end-sub{ color:#dce7f5; margin-bottom:24px; font-size:.95rem; }
+.end-actions{ display:flex; gap:10px; }
+.end-actions button{ padding:12px 22px; border-radius:8px; border:none; font-weight:700; cursor:pointer; }
+.btn-primary{ background:var(--accent); color:#fff; }
+.btn-secondary{ background:#fff; color:var(--ink); }
+</style>
+</head>
+<body>
+
+<div id="screen-splash">
+  <div class="splash-symbol">✈️</div>
+  <div class="splash-title">湊數飛行</div>
+  <div class="splash-sub">選出湊成目標數字的答案，讓飛機飛越大海</div>
+  <button class="splash-btn" onclick="hideSplash()">開始</button>
+</div>
+
+<div id="update-bar">
+  <span>發現新版本</span>
+  <button id="update-btn">立即更新</button>
+</div>
+
+<!-- 設定畫面 -->
+<div class="screen active" id="screen-menu">
+  <div class="top-bar"><span id="version-tag"></span><span></span></div>
+  <div class="page-title">湊數<span>飛行</span></div>
+
+  <div class="card">
+    <div class="card-title">用多少去湊</div>
+    <input id="base-input" class="base-input" type="number" min="2" max="999" value="100" inputmode="numeric">
+  </div>
+
+  <div class="card">
+    <div class="card-title">格子大小</div>
+    <div class="diff-grid" id="grid-size-grid"></div>
+  </div>
+
+  <button class="start-btn" onclick="startGame()">開始遊戲</button>
+</div>
+
+<!-- 遊戲畫面 -->
+<div class="screen" id="screen-game">
+  <div class="ctrl-bar">
+    <button class="ctrl-btn" onclick="restartGame()">↻ 重來</button>
+    <button class="ctrl-btn" onclick="backToSettings()">⚙ 設定</button>
+    <div class="spacer"></div>
+    <span class="score-tag" id="score-tag">分數：0 / 10</span>
+  </div>
+  <div class="ctrl-bar" style="margin-top:-2px">
+    <span class="lives-tag" id="lives-tag">生命：❤️❤️❤️</span>
+  </div>
+
+  <div id="runway">
+    <div class="sky"></div>
+    <div class="sea" id="sea"></div>
+    <div class="land start" id="land-start"></div>
+    <div class="land end" id="land-end"></div>
+    <svg id="arc-svg"><path id="arc-path" fill="none" stroke="#ffffffcc" stroke-width="3" stroke-dasharray="6 6"/></svg>
+    <div id="finish-pin">10</div>
+    <div id="plane">✈️</div>
+  </div>
+
+  <div class="q-row">
+    <div class="target-num" id="target-num">0</div>
+    <div class="q-info">
+      <div class="status-text" id="status-text">請選擇和左邊數字加起來等於 100 的數字</div>
+    </div>
+  </div>
+
+  <div class="grid-wrap" id="grid-wrap"></div>
+</div>
+
+<div id="end-overlay">
+  <div>
+    <div class="end-title" id="end-title"></div>
+    <div class="end-sub" id="end-sub"></div>
+    <div class="end-actions">
+      <button class="btn-primary" onclick="restartGame()">再玩一次</button>
+      <button class="btn-secondary" onclick="backToSettings()">重新設定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== 常數（對應原本 plane_minus.py） ===== */
+const MAX_ALTITUDE = 10;
+const MAX_LIVES = 3;
+const HOP_MS = 500;
+const PALETTE = ["#FF8A65","#FFB74D","#AED581","#4FC3F7","#BA68C8","#F06292","#4DB6AC","#FFD54F","#90A4AE"];
+const colorFor = n => PALETTE[n % PALETTE.length];
+
+const GRID_OPTIONS = [2,3,4,5];
+const GRID_FONT = {2:22,3:19,4:16,5:13};
+
+/* ===== 狀態 ===== */
+let S = { baseNumber:100, gridSize:3, gridCount:9, score:0, winScore:10, lives:MAX_LIVES,
+          altitude:0, gameOver:false, animating:false, timerStarted:false, startTime:0,
+          target:0, correctAnswer:0 };
+let geo = { startX:0, endX:0, baseY:0, arcH:0 };
+let gridButtons = [];
+let selectedGridSize = 3;
+
+function hideSplash(){ document.getElementById('screen-splash').style.display='none'; }
+
+/* ===== 設定畫面 ===== */
+function buildGridSizeChoices(){
+  const wrap = document.getElementById('grid-size-grid');
+  wrap.innerHTML = '';
+  GRID_OPTIONS.forEach(n=>{
+    const b = document.createElement('div');
+    b.className = 'diff-btn' + (n===selectedGridSize ? ' selected':'');
+    b.innerHTML = `<span class="d-level">${n}×${n}</span><span class="d-sub">${n*n} 個選項</span>`;
+    b.onclick = ()=>{ selectedGridSize = n; buildGridSizeChoices(); };
+    wrap.appendChild(b);
+  });
+}
+buildGridSizeChoices();
+
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function backToSettings(){
+  document.getElementById('end-overlay').classList.remove('show');
+  document.getElementById('base-input').value = S.baseNumber;
+  selectedGridSize = S.gridSize;
+  buildGridSizeChoices();
+  showScreen('screen-menu');
+}
+
+/* ===== 開始 / 重來 ===== */
+function startGame(){
+  const base = parseInt(document.getElementById('base-input').value, 10);
+  S.baseNumber = (isNaN(base) || base < 2) ? 100 : base;
+  S.gridSize = selectedGridSize;
+  S.gridCount = S.gridSize * S.gridSize;
+  buildGridButtons();
+  resetRunState();
+  showScreen('screen-game');
+  requestAnimationFrame(()=>{ updateRunwayGeometry(); placePlane(0); newRound(); });
+}
+
+function restartGame(){
+  document.getElementById('end-overlay').classList.remove('show');
+  resetRunState();
+  showScreen('screen-game');
+  requestAnimationFrame(()=>{ updateRunwayGeometry(); placePlane(0); newRound(); });
+}
+
+function resetRunState(){
+  S.score = 0; S.lives = MAX_LIVES; S.altitude = 0; S.gameOver = false;
+  S.animating = false; S.timerStarted = false; S.startTime = 0;
+  updateScoreLabel(); updateLivesLabel();
+}
+
+/* ===== 建立九宮格按鈕 ===== */
+function buildGridButtons(){
+  const wrap = document.getElementById('grid-wrap');
+  wrap.innerHTML = '';
+  wrap.style.gridTemplateColumns = `repeat(${S.gridSize}, 1fr)`;
+  gridButtons = [];
+  const fs = GRID_FONT[S.gridSize] || 16;
+  for(let i=0;i<S.gridCount;i++){
+    const b = document.createElement('button');
+    b.className = 'num-btn';
+    b.style.fontSize = fs + 'px';
+    b.onclick = ()=>onNumberClicked(b);
+    wrap.appendChild(b);
+    gridButtons.push(b);
+  }
+}
+
+/* ===== 出題 ===== */
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function sample(pool,count){ return shuffle(pool.slice()).slice(0,count); }
+
+function newRound(){
+  S.target = 1 + Math.floor(Math.random() * (S.baseNumber - 1));
+  S.correctAnswer = S.baseNumber - S.target;
+  document.getElementById('target-num').textContent = S.target;
+
+  const candidateMax = Math.max(S.baseNumber, S.gridCount + 2);
+  const pool = [];
+  for(let n=1;n<=candidateMax;n++) if(n !== S.correctAnswer) pool.push(n);
+  const distractors = sample(pool, S.gridCount - 1);
+  const numbers = shuffle(distractors.concat([S.correctAnswer]));
+
+  gridButtons.forEach((btn,i)=>{
+    const n = numbers[i];
+    btn.textContent = n;
+    btn.dataset.value = n;
+    btn.style.background = colorFor(n);
+    btn.classList.remove('correct','wrong');
+  });
+  document.getElementById('status-text').textContent = `請選擇和左邊數字加起來等於 ${S.baseNumber} 的數字`;
+}
+
+/* ===== 作答 ===== */
+function onNumberClicked(btn){
+  if(S.gameOver || S.animating) return;
+  if(!S.timerStarted){ S.timerStarted = true; S.startTime = performance.now(); }
+
+  const chosen = parseInt(btn.dataset.value, 10);
+  const oldAltitude = S.altitude;
+
+  if(chosen + S.target === S.baseNumber){
+    S.score++;
+    S.altitude = Math.min(MAX_ALTITUDE, S.altitude + 1);
+    btn.classList.add('correct');
+    document.getElementById('status-text').textContent = `答對了！${S.target} + ${chosen} = ${S.baseNumber}，飛機前進一段！`;
+  } else {
+    S.score--;
+    S.lives--;
+    S.altitude = Math.max(0, S.altitude - 1);
+    btn.classList.add('wrong');
+    document.getElementById('status-text').textContent = '不對喔，飛機退回一段！';
+  }
+  updateScoreLabel(); updateLivesLabel();
+  animatePlane(oldAltitude, S.altitude);
+}
+
+function updateScoreLabel(){ document.getElementById('score-tag').textContent = `分數：${S.score} / ${S.winScore}`; }
+function updateLivesLabel(){ document.getElementById('lives-tag').textContent = '生命：' + '❤️'.repeat(S.lives) + '🖤'.repeat(MAX_LIVES - S.lives); }
+
+/* ===== 飛機沿弧線飛行動畫（對應 point_on_arc / angle_for_t） ===== */
+function pointOnArc(t){
+  const x = geo.startX + (geo.endX - geo.startX) * t;
+  const h = geo.arcH * (1 - Math.cos(2*Math.PI*t)) / 2;
+  const y = geo.baseY - h;
+  return [x,y];
+}
+function angleForT(t){
+  const dxdt = geo.endX - geo.startX;
+  if(dxdt <= 0) return 0;
+  const dydt = -geo.arcH * Math.PI * Math.sin(2*Math.PI*t);
+  return Math.atan2(dydt, dxdt) * 180 / Math.PI;
+}
+function placePlane(t){
+  t = Math.max(0, Math.min(1, t));
+  const [x,y] = pointOnArc(t);
+  const plane = document.getElementById('plane');
+  plane.style.transform = `translate(${x}px,${y}px) rotate(${angleForT(t)}deg)`;
+}
+
+function animatePlane(fromAlt, toAlt){
+  S.animating = true;
+  const tFrom = fromAlt / MAX_ALTITUDE, tTo = toAlt / MAX_ALTITUDE;
+  const start = performance.now();
+  function easeInOutQuad(x){ return x<0.5 ? 2*x*x : 1-Math.pow(-2*x+2,2)/2; }
+  function step(now){
+    const p = Math.min(1, (now-start)/HOP_MS);
+    placePlane(tFrom + (tTo-tFrom) * easeInOutQuad(p));
+    if(p<1) requestAnimationFrame(step); else onHopFinished();
+  }
+  requestAnimationFrame(step);
+}
+
+function onHopFinished(){
+  S.animating = false;
+  placePlane(S.altitude / MAX_ALTITUDE);
+  if(S.lives <= 0){ endGame(false); return; }
+  if(S.score >= S.winScore){ endGame(true); return; }
+  newRound();
+}
+
+/* ===== 結束 ===== */
+function endGame(win){
+  S.gameOver = true;
+  const elapsed = ((performance.now() - S.startTime) / 1000).toFixed(1);
+  const title = document.getElementById('end-title');
+  const sub = document.getElementById('end-sub');
+  if(win){ title.textContent = '🎉 恭喜獲勝！ 🎉'; title.style.color = '#FFD54F'; sub.textContent = `總共花了 ${elapsed} 秒`; }
+  else{ title.textContent = '💥 飛機墜毀，遊戲結束 💥'; title.style.color = '#EF5350'; sub.textContent = `本局花了 ${elapsed} 秒，最終分數 ${S.score} 分`; }
+  document.getElementById('end-overlay').classList.add('show');
+}
+
+/* ===== 跑道幾何（對應 update_track_geometry / resizeEvent） ===== */
+function updateRunwayGeometry(){
+  const runway = document.getElementById('runway');
+  const w = runway.clientWidth, h = runway.clientHeight;
+  const planeW = 70, planeH = 47;
+  const landW = Math.max(50, Math.min(100, w*0.14));
+  const horizonY = h * 0.62;
+
+  document.getElementById('land-start').style.width = landW+'px';
+  document.getElementById('land-start').style.height = (h-horizonY)+'px';
+  document.getElementById('land-end').style.width = landW+'px';
+  document.getElementById('land-end').style.height = (h-horizonY)+'px';
+  document.getElementById('sea').style.height = (h-horizonY)+'px';
+
+  geo.startX = landW/2 - planeW/2;
+  geo.endX = Math.max(geo.startX, w - landW/2 - planeW/2);
+  geo.baseY = horizonY - planeH/2;
+  geo.arcH = h * 0.5;
+
+  const svg = document.getElementById('arc-svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  const samples = 40;
+  let d = '';
+  for(let i=0;i<=samples;i++){
+    const [x,y] = pointOnArc(i/samples);
+    d += (i===0?'M':'L') + (x+planeW/2) + ' ' + (y+planeH/2) + ' ';
+  }
+  document.getElementById('arc-path').setAttribute('d', d);
+
+  const [ex,ey] = pointOnArc(1);
+  const pin = document.getElementById('finish-pin');
+  pin.style.left = (ex + planeW - 4) + 'px';
+  pin.style.top = (ey - 6) + 'px';
+}
+window.addEventListener('resize', ()=>{
+  updateRunwayGeometry();
+  if(!S.animating) placePlane(S.altitude / MAX_ALTITUDE);
+});
+
+/* ===== PWA 安裝 / 更新（改進：使用者確認後才切換版本） ===== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.active && reg.active.postMessage('GET_VERSION');
+
+      reg.addEventListener('updatefound', ()=>{
+        const nw = reg.installing;
+        nw && nw.addEventListener('statechange', ()=>{
+          if(nw.state === 'installed' && navigator.serviceWorker.controller){
+            document.getElementById('update-bar').style.display = 'flex';
+          }
+        });
+      });
+
+      document.getElementById('update-btn').onclick = ()=>{
+        reg.waiting && reg.waiting.postMessage('SKIP_WAITING');
+        document.getElementById('update-bar').style.display = 'none';
+      };
+
+      // 定期檢查（開著時每 60 秒）+ 從背景切回前景時立刻檢查
+      setInterval(()=>reg.update(), 60000);
+      document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) reg.update(); });
+    });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
+
+    navigator.serviceWorker.addEventListener('message', (e)=>{
+      if(e.data && e.data.type === 'VERSION') document.getElementById('version-tag').textContent = 'v' + e.data.version;
+    });
+  });
+}
+</script>
+</body>
+</html>
