@@ -1,4 +1,4 @@
-const VERSION      = '2026.09.26-v1.0';   // ← 每次發布只改這一行
+const VERSION      = '2026.09.26-v1.1';   // ← 每次發布只改這一行
 const CACHE_NAME   = `planeminus-${VERSION}`;
 const CORE_ASSETS  = [
   './',

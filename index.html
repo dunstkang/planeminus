@@ -93,6 +93,7 @@ body{
 #runway .land.end{ right:0; }
 #runway svg{ position:absolute; inset:0; width:100%; height:100%; }
 #plane{ position:absolute; width:70px; height:47px; transform-origin:center center; will-change:transform; }
+#plane svg{ width:100%; height:100%; display:block; overflow:visible; }
 #finish-pin{
   position:absolute; width:34px; height:34px; border-radius:50%; background:#E53935; color:#fff;
   display:flex; align-items:center; justify-content:center; font-weight:900; font-size:.85rem;
@@ -177,7 +178,16 @@ body{
     <div class="land end" id="land-end"></div>
     <svg id="arc-svg"><path id="arc-path" fill="none" stroke="#ffffffcc" stroke-width="3" stroke-dasharray="6 6"/></svg>
     <div id="finish-pin">10</div>
-    <div id="plane">✈️</div>
+    <div id="plane">
+      <svg viewBox="0 0 92 62" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13.8,34.1 Q50.6,49.6 85.56,34.72 Q50.6,44.64 13.8,34.1 Z" fill="#CFD8DC"/>
+        <path d="M89.24,32.24 Q50.6,9.92 11.04,22.32 Q3.68,31 11.04,39.68 Q50.6,52.08 89.24,32.24 Z" fill="#ffffff" stroke="#37474F" stroke-width="1.6"/>
+        <path d="M47.84,32.24 L16.56,62 L36.8,54.56 L58.88,35.96 Z" fill="#ECEFF1" stroke="#37474F" stroke-width="1.2"/>
+        <path d="M13.8,23.56 L1.84,2.48 L23,21.08 Z" fill="#B71C1C"/>
+        <path d="M12.88,31 Q50.6,40.92 87.4,32.24" fill="none" stroke="#FFB300" stroke-width="2.4"/>
+        <ellipse cx="79.12" cy="28.52" rx="2.76" ry="3.1" fill="#263238"/>
+      </svg>
+    </div>
   </div>
 
   <div class="q-row">
