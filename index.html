@@ -85,15 +85,27 @@ body{
 .score-tag{ color:var(--accent2); }
 
 /* runway */
-#runway{ position:relative; width:100%; height:min(34vw,190px); min-height:140px; border-radius:16px; overflow:hidden; border:2px solid #90A4AE; margin-bottom:14px; }
+#runway{ --rh:max(140px,min(34vw,190px)); position:relative; width:100%; height:var(--rh); border-radius:16px; overflow:hidden; border:2px solid #90A4AE; margin-bottom:14px; }
 #runway .sky{ position:absolute; inset:0; background:linear-gradient(180deg,var(--sky-top) 0%,var(--sky-bot) 100%); }
 #runway .sea{ position:absolute; left:0; right:0; bottom:0; background:linear-gradient(180deg,var(--sea-top),var(--sea-bot)); }
 #runway .land{ position:absolute; bottom:0; background:linear-gradient(180deg,var(--land-top),var(--land-bot)); }
 #runway .land.start{ left:0; }
 #runway .land.end{ right:0; }
+#runway .deco{ position:absolute; pointer-events:none; user-select:none; -webkit-user-drag:none; }
+#runway .sun{ right:7%; top:6%; height:calc(var(--rh)*.32); }
+/* 獎勵物件：一開始全部隱藏，依分數逐一長出來 */
+#runway .reward{ opacity:0; transform:scale(.5); transition:opacity .4s ease, transform .5s cubic-bezier(.34,1.56,.64,1); }
+#runway .reward.on{ opacity:var(--op,1); transform:scale(1); }
+#runway .tree.reward{ transform-origin:bottom center; }
+#runway .tree{ bottom:calc(100% - 3px); }
+#runway .tree-l{ height:calc(var(--rh)*.34); }
+#runway .tree-s{ height:calc(var(--rh)*.24); }
 #runway svg{ position:absolute; inset:0; width:100%; height:100%; }
-#plane{ position:absolute; width:70px; height:47px; transform-origin:center center; will-change:transform; }
-#plane svg{ width:100%; height:100%; display:block; overflow:visible; }
+#plane{ position:absolute; width:70px; height:30px; transform-origin:center center; will-change:transform; }  /* 尺寸需與 JS 的 PLANE_W / PLANE_H 一致 */
+#plane img{ position:absolute; inset:0; width:100%; height:100%; display:block; pointer-events:none; user-select:none; -webkit-user-drag:none; }
+#plane #plane-gear{ display:none; }
+#plane.gear-down #plane-gear{ display:block; }
+#plane.gear-down #plane-air{ display:none; }
 #finish-pin{
   position:absolute; width:34px; height:34px; border-radius:50%; background:#E53935; color:#fff;
   display:flex; align-items:center; justify-content:center; font-weight:900; font-size:.85rem;
@@ -113,15 +125,22 @@ body{
 .num-btn.correct{ border-color:var(--green); }
 .num-btn.wrong{ border-color:var(--red); }
 
-/* end overlay */
+/* end overlay：貼在畫面底部的結算面板，不遮住跑道，讓玩家看到飛機降落的成果 */
 #end-overlay{
-  display:none; position:fixed; inset:0; z-index:500; background:rgba(15,20,30,.9);
-  align-items:center; justify-content:center; text-align:center; padding:24px; opacity:0; transition:opacity .5s ease;
+  display:none; position:fixed; left:0; right:0; bottom:0; z-index:500;
+  justify-content:center; pointer-events:none;
+  opacity:0; transform:translateY(24px); transition:opacity .5s ease, transform .5s ease;
 }
-#end-overlay.show{ display:flex; opacity:1; }
-.end-title{ font-family:'Bebas Neue',cursive; font-size:2.2rem; letter-spacing:2px; margin-bottom:10px; }
-.end-sub{ color:#dce7f5; margin-bottom:24px; font-size:.95rem; }
-.end-actions{ display:flex; gap:10px; }
+#end-overlay.show{ display:flex; opacity:1; transform:translateY(0); }
+#end-overlay > div{
+  pointer-events:auto; width:100%; max-width:480px; text-align:center;
+  background:rgba(15,20,30,.92); border-radius:18px 18px 0 0;
+  padding:18px 20px calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -6px 24px rgba(0,0,0,.25); backdrop-filter:blur(6px);
+}
+.end-title{ font-family:'Bebas Neue',cursive; font-size:1.8rem; letter-spacing:2px; margin-bottom:6px; }
+.end-sub{ color:#dce7f5; margin-bottom:14px; font-size:.95rem; }
+.end-actions{ display:flex; gap:10px; justify-content:center; }
 .end-actions button{ padding:12px 22px; border-radius:8px; border:none; font-weight:700; cursor:pointer; }
 .btn-primary{ background:var(--accent); color:#fff; }
 .btn-secondary{ background:#fff; color:var(--ink); }
@@ -173,20 +192,20 @@ body{
 
   <div id="runway">
     <div class="sky"></div>
+    <img class="deco sun reward" id="sun" src="sun.png" alt="" draggable="false">
     <div class="sea" id="sea"></div>
-    <div class="land start" id="land-start"></div>
-    <div class="land end" id="land-end"></div>
+    <div class="land start" id="land-start">
+      <img class="deco tree tree-l reward" id="tree-1" src="tree-pine.png" alt="" draggable="false" style="left:2px">
+      <img class="deco tree tree-s reward" id="tree-3" src="tree-round.png" alt="" draggable="false" style="right:3px">
+    </div>
+    <div class="land end" id="land-end">
+      <img class="deco tree tree-l reward" id="tree-2" src="tree-round.png" alt="" draggable="false" style="right:2px">
+    </div>
     <svg id="arc-svg"><path id="arc-path" fill="none" stroke="#ffffffcc" stroke-width="3" stroke-dasharray="6 6"/></svg>
     <div id="finish-pin">10</div>
     <div id="plane">
-      <svg viewBox="0 0 92 62" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13.8,34.1 Q50.6,49.6 85.56,34.72 Q50.6,44.64 13.8,34.1 Z" fill="#CFD8DC"/>
-        <path d="M89.24,32.24 Q50.6,9.92 11.04,22.32 Q3.68,31 11.04,39.68 Q50.6,52.08 89.24,32.24 Z" fill="#ffffff" stroke="#37474F" stroke-width="1.6"/>
-        <path d="M47.84,32.24 L16.56,62 L36.8,54.56 L58.88,35.96 Z" fill="#ECEFF1" stroke="#37474F" stroke-width="1.2"/>
-        <path d="M13.8,23.56 L1.84,2.48 L23,21.08 Z" fill="#B71C1C"/>
-        <path d="M12.88,31 Q50.6,40.92 87.4,32.24" fill="none" stroke="#FFB300" stroke-width="2.4"/>
-        <ellipse cx="79.12" cy="28.52" rx="2.76" ry="3.1" fill="#263238"/>
-      </svg>
+      <img id="plane-air" src="plane_air.png" alt="" draggable="false">
+      <img id="plane-gear" src="plane_landing.png" alt="" draggable="false">
     </div>
   </div>
 
@@ -216,6 +235,9 @@ body{
 const MAX_ALTITUDE = 10;
 const MAX_LIVES = 3;
 const HOP_MS = 500;
+const PLANE_W = 70, PLANE_H = 30;   // 飛機顯示尺寸（與 CSS #plane 一致）
+const GROUND_SINK = 2;              // 輪胎陷入陸地上緣的像素，看起來才像「踩在地上」（樹根也是同樣做法）
+const GEAR_T = 0.12;               // 弧線起點/終點附近這段範圍放下起落架
 const PALETTE = ["#FF8A65","#FFB74D","#AED581","#4FC3F7","#BA68C8","#F06292","#4DB6AC","#FFD54F","#90A4AE"];
 const colorFor = n => PALETTE[n % PALETTE.length];
 
@@ -229,6 +251,32 @@ let S = { baseNumber:100, gridSize:3, gridCount:9, score:0, winScore:10, lives:M
 let geo = { startX:0, endX:0, baseY:0, arcH:0 };
 let gridButtons = [];
 let selectedGridSize = 3;
+
+/* ===== 獎勵場景：每 1 分 +1 朵雲，每 3 朵雲 +1 棵樹，3 棵樹後出現太陽 ===== */
+const CLOUD_SLOTS = [  // [left%, top%, 高度係數, 圖片, 透明度]
+  [5,9,.20,1,1],   [58,34,.12,2,.85], [30,6,.16,2,1],  [72,16,.15,1,1],  [44,26,.14,1,1],
+  [14,30,.12,2,.9],[82,38,.11,1,.9],  [24,42,.12,2,.9],[62,8,.14,2,1],    [48,44,.10,2,.85]
+];
+const TREES_FOR_SUN = 3;
+const cloudEls = [];
+function buildClouds(){
+  const sea = document.getElementById('sea');
+  CLOUD_SLOTS.forEach(([l,t,hf,img,op])=>{
+    const c = document.createElement('img');
+    c.className = 'deco reward';
+    c.src = `cloud-${img}.png`; c.alt = ''; c.draggable = false;
+    c.style.cssText = `left:${l}%;top:${t}%;height:calc(var(--rh)*${hf});--op:${op}`;
+    sea.parentNode.insertBefore(c, sea);
+    cloudEls.push(c);
+  });
+}
+function updateScenery(){
+  const clouds = Math.max(0, Math.min(S.score, CLOUD_SLOTS.length));
+  const trees = Math.min(TREES_FOR_SUN, Math.floor(clouds / 3));
+  cloudEls.forEach((c,i)=>c.classList.toggle('on', i < clouds));
+  for(let i=1;i<=TREES_FOR_SUN;i++) document.getElementById('tree-'+i).classList.toggle('on', i <= trees);
+  document.getElementById('sun').classList.toggle('on', trees >= TREES_FOR_SUN);
+}
 
 function hideSplash(){ document.getElementById('screen-splash').style.display='none'; }
 
@@ -245,6 +293,7 @@ function buildGridSizeChoices(){
   });
 }
 buildGridSizeChoices();
+buildClouds();
 
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -281,7 +330,7 @@ function restartGame(){
 function resetRunState(){
   S.score = 0; S.lives = MAX_LIVES; S.altitude = 0; S.gameOver = false;
   S.animating = false; S.timerStarted = false; S.startTime = 0;
-  updateScoreLabel(); updateLivesLabel();
+  updateScoreLabel(); updateLivesLabel(); updateScenery();
 }
 
 /* ===== 建立九宮格按鈕 ===== */
@@ -371,6 +420,7 @@ function placePlane(t){
   const [x,y] = pointOnArc(t);
   const plane = document.getElementById('plane');
   plane.style.transform = `translate(${x}px,${y}px) rotate(${angleForT(t)}deg)`;
+  plane.classList.toggle('gear-down', t <= GEAR_T || t >= 1 - GEAR_T);
 }
 
 function animatePlane(fromAlt, toAlt){
@@ -389,6 +439,7 @@ function animatePlane(fromAlt, toAlt){
 function onHopFinished(){
   S.animating = false;
   placePlane(S.altitude / MAX_ALTITUDE);
+  updateScenery();   // 飛機落定後，才長出（或收回）獎勵物件
   if(S.lives <= 0){ endGame(false); return; }
   if(S.score >= S.winScore){ endGame(true); return; }
   newRound();
@@ -402,6 +453,7 @@ function endGame(win){
   const sub = document.getElementById('end-sub');
   if(win){ title.textContent = '🎉 恭喜獲勝！ 🎉'; title.style.color = '#FFD54F'; sub.textContent = `總共花了 ${elapsed} 秒`; }
   else{ title.textContent = '💥 飛機墜毀，遊戲結束 💥'; title.style.color = '#EF5350'; sub.textContent = `本局花了 ${elapsed} 秒，最終分數 ${S.score} 分`; }
+  document.getElementById('runway').scrollIntoView({ block:'start', behavior:'smooth' });
   document.getElementById('end-overlay').classList.add('show');
 }
 
@@ -409,7 +461,7 @@ function endGame(win){
 function updateRunwayGeometry(){
   const runway = document.getElementById('runway');
   const w = runway.clientWidth, h = runway.clientHeight;
-  const planeW = 70, planeH = 47;
+  const planeW = PLANE_W, planeH = PLANE_H;
   const landW = Math.max(50, Math.min(100, w*0.14));
   const horizonY = h * 0.62;
 
@@ -421,8 +473,8 @@ function updateRunwayGeometry(){
 
   geo.startX = landW/2 - planeW/2;
   geo.endX = Math.max(geo.startX, w - landW/2 - planeW/2);
-  geo.baseY = horizonY - planeH/2;
-  geo.arcH = h * 0.5;
+  geo.baseY = horizonY - planeH + GROUND_SINK;   // 輪胎底緣落在陸地上緣再下沉一點
+  geo.arcH = h * 0.5 - planeH/2;    // 頂點高度與舊版相同
 
   const svg = document.getElementById('arc-svg');
   svg.setAttribute('viewBox', `0 0 ${w} ${h}`);

@@ -1,4 +1,4 @@
-const VERSION      = '2026.09.26-v1.1';   // ← 每次發布只改這一行
+const VERSION      = '2026.09.30-v1.4';   // ← 每次發布只改這一行
 const CACHE_NAME   = `planeminus-${VERSION}`;
 const CORE_ASSETS  = [
   './',
@@ -6,6 +6,13 @@ const CORE_ASSETS  = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './sun.png',
+  './cloud-1.png',
+  './cloud-2.png',
+  './tree-round.png',
+  './tree-pine.png',
+  './plane_air.png',
+  './plane_landing.png',
 ];
 
 // 安裝：預先快取核心檔案，但「不」立刻 skipWaiting，
